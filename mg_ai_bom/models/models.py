@@ -28,17 +28,26 @@ class CRMInherit(models.Model):
                 # Parsing the response as JSON
                 data = response.json()
 
-                BOM = data.get('BOM', {})
-                product_name = 'NKFROSE MOM TWI SHORTS 3248-TW TBINMT-2409-00551'
+                # We need to access the 'Data' key to get the list
+                data_list = data.get('Data', [])
 
-                # Extract the Product Name from the returned data
-                product_name = self.extract_product_name(product_name)
+                if data_list:
+                    # To get the 'FG_1' data
+                    fg_1_data = data_list[0].get('FG_1', {})
 
-                # Print or use the Product Name as needed
-                if product_name:
-                    print("Extracted Product Name:", product_name)
+                    # Check if 'FG_1' exists in the data
+                    if fg_1_data:
+                        # Do something with fg_1_data here
+                        product_name = fg_1_data.get('Product_Name', 'Unknown Product')
+                        print("Extracted Product Name:", product_name)
+                        create_product = self.create_product(product_name)
 
-                return data
+                        # You can now proceed with any further processing or use the extracted data
+                        return fg_1_data
+                    else:
+                        print("FG_1 data is not available")
+                else:
+                    print("No data available in 'Data' key")
             else:
                 print(f"Error: Received status code {response.status_code}")
                 return None
@@ -52,21 +61,21 @@ class CRMInherit(models.Model):
         Create a new product in Odoo using the given product data.
         """
         try:
+            product_data = product_data
             # Create a new product record in the 'product.template' model
-            product_template = self.env['product.template'].create({
-                'name': product_data.get('name'),
-                # 'description': product_data.get('description'),
-                # 'type': 'product',  # Assuming the product is a stockable product
-                # 'list_price': product_data.get('raw_materials_cost', 0),  # You can adjust this if needed
-                # 'standard_price': product_data.get('raw_materials_cost', 0),  # Assuming cost is raw materials cost
+            # product_template = self.env['product.template'].create({'name': product_data})
+
+            product = self.env['product.template'].create({
+                'name': product_data,
+                'type': 'consu',  # or 'consu' or 'service'
             })
 
             # Optionally, you can create additional product variants, etc.
-            self.env['product.product'].create({
-                'product_tmpl_id': product_template.id,
-                'quantity_on_hand': product_data.get('quantity', 0)
-            })
-            print(f"Product {product_data.get('name')} created successfully.")
+            # self.env['product.product'].create({
+            #     'product_tmpl_id': product_template.id,
+            #     'quantity_on_hand': product_data.get('quantity', 0)
+            # })
+            # print(f"Product {product_data.get('name')} created successfully.")
         except Exception as e:
             print(f"Error creating product: {e}")
 
