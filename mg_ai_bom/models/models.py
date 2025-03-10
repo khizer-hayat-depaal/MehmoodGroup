@@ -28,26 +28,18 @@ class CRMInherit(models.Model):
                 # Parsing the response as JSON
                 data = response.json()
 
-                # We need to access the 'Data' key to get the list
-                data_list = data.get('Data', [])
+                # Loop through all products dynamically without using the specific key like "FG_1"
+                for product_data in data["Data"]:
+                    for key in product_data:
+                        fg_data = product_data[key]
 
-                if data_list:
-                    # To get the 'FG_1' data
-                    fg_1_data = data_list[0].get('FG_1', {})
+                        # Product Information
+                        product_name = fg_data["Product_Name"]
+                        product_description = fg_data["Product_Description"]
+                        total_quantity = fg_data["Quantity"]
 
-                    # Check if 'FG_1' exists in the data
-                    if fg_1_data:
-                        # Do something with fg_1_data here
-                        product_name = fg_1_data.get('Product_Name', 'Unknown Product')
-                        print("Extracted Product Name:", product_name)
-                        create_product = self.create_product(product_name)
-
-                        # You can now proceed with any further processing or use the extracted data
-                        return fg_1_data
-                    else:
-                        print("FG_1 data is not available")
-                else:
-                    print("No data available in 'Data' key")
+                        # Call the create_product method with the extracted data
+                        self.create_product(product_name, product_description, total_quantity)
             else:
                 print(f"Error: Received status code {response.status_code}")
                 return None
@@ -56,63 +48,26 @@ class CRMInherit(models.Model):
             print(f"An error occurred: {e}")
             return None
 
-    def create_product(self, product_data):
+    def create_product(self, product_name, product_description, total_quantity):
         """
         Create a new product in Odoo using the given product data.
         """
         try:
-            product_data = product_data
-            # Create a new product record in the 'product.template' model
-            # product_template = self.env['product.template'].create({'name': product_data})
+            # Define the product data dictionary
+            product_data = {
+                'name': product_name,  # Name of the product
+                'type': 'consu',  # or 'product' or 'service', depending on your type
+                'description': product_description,  # Description of the product
+                # 'quantity_on_hand': total_quantity,  # Available quantity (this can be updated later)
+                # 'bom_ids': [],  # You can later add BOM data if necessary
+            }
 
-            product = self.env['product.template'].create({
-                'name': product_data,
-                'type': 'consu',  # or 'consu' or 'service'
-            })
-
-            # Optionally, you can create additional product variants, etc.
-            # self.env['product.product'].create({
-            #     'product_tmpl_id': product_template.id,
-            #     'quantity_on_hand': product_data.get('quantity', 0)
-            # })
-            # print(f"Product {product_data.get('name')} created successfully.")
+            # Create the product in Odoo
+            product = self.env['product.template'].create(product_data)
+            print(f"Product {product_data.get('name')} created successfully.")
         except Exception as e:
             print(f"Error creating product: {e}")
 
-    def extract_product_names(self, json_data):
-        """
-        Extract product names from the JSON data and create products based on this data.
-        """
-        try:
-            # Check if the data is a list of products
-            if isinstance(json_data, list):
-                # Loop through each product in the list
-                for product in json_data:
-                    # Extract the necessary product data
-                    product_name = product.get("Product_Name")
-                    # product_description = product.get("Product_Description")
-                    # quantity = product.get("Quantity")
-                    # cost_estimation = product.get("Cost_Estimation", {})
-                    # raw_materials_cost = cost_estimation.get("Raw_Materials_Cost")
-
-                    # Create a dictionary for the product data
-                    product_data = {
-                        'name': product_name,
-                        # 'description': product_description,
-                        # 'quantity': quantity,
-                        # 'raw_materials_cost': raw_materials_cost
-                    }
-
-                    # Call the create_product method to create a product in Odoo
-                    self.create_product(product_data)
-
-                return "Products Created Successfully"
-            else:
-                print("Expected data format is a list of products")
-                return None
-        except Exception as e:
-            print(f"Error extracting product names: {e}")
-            return None
 
     def action_sale_quotations_new(self):
         # First, call the fetch_json_data method
